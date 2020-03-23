@@ -6,8 +6,11 @@ output: html_notebook
 ```{r}
 data_AM=read.csv("data_AM.csv")
 data_GM=read.csv("data_GM.csv")
+data_temp_AM=read.csv("data_AM_statenames.csv")
+data_temp_GM=read.csv("data_GM_statenames.csv")
 library(TDA)
 library(igraph)
+library(erer)
 ```
 
 ```{r}
@@ -45,6 +48,18 @@ for (i in 1:nrow(dist)){
 }
 ```
 
+```{r}
+diag_AM_Eucl=ripsDiag(X = data_AM, maxdimension = 1, maxscale = 1, dist = "euclidean", library = "Dionysus", location = TRUE)
+plot(diag_AM_Eucl[["diagram"]], barcode = TRUE)
+```
+
+```{r}
+vec=diag_AM_Eucl$diagram[1:30,3] - diag_AM_Eucl$diagram[1:30,2]
+vec=vec[-1]
+vec1=which(vec>mean(vec))
+
+```
+
 
 ```{r}
 diag_AM=ripsDiag(X=graph_dist_AM, maxdimension = 1, maxscale = 2, dist = "arbitrary", library = "Dionysus", location = TRUE, printProgress = TRUE)
@@ -57,6 +72,11 @@ plot(diag_GM[["diagram"]], barcode=TRUE)
 ```
 
 ```{r}
+diag_AM_Eucl
+```
+
+
+```{r}
 diag_AM
 ```
 
@@ -64,4 +84,103 @@ diag_AM
 diag_GM
 ```
 
+```{r}
+filt_AM_Eucl=ripsFiltration(X = data_AM, maxdimension = 1, maxscale = 1, dist = "euclidean", library = "Dionysus")
+```
 
+```{r}
+#write.list(filt_AM_Eucl$cmplx, file = "edges_order_of_appearance_4_metrics.csv")
+#write.list(list(filt_AM_Eucl$values), file = "edges_values_4_metrics.csv")
+```
+
+
+```{r}
+filt_AM=ripsFiltration(X=graph_dist_AM, maxdimension = 1, maxscale = 2, dist = "arbitrary", library = "Dionysus", printProgress = TRUE)
+```
+
+```{r}
+filt_GM=ripsFiltration(X=graph_dist_GM, maxdimension = 1, maxscale = 2, dist = "arbitrary", library = "Dionysus", printProgress = TRUE)
+```
+
+```{r}
+state_name_index=c("1"="AP", "2"="AR", "3"="AS", "4"="BR", "5"="CG", "6"="DL", "7"="GA", "8"="GJ", "9"="HR", "10"="HP", "11"="JK", "12"="JH", "13"="KA", "14"="KL", "15"="MP", "16"="MH", "17"="MN", "18"="ML", "19"="MZ", "20"="NL", "21"="OD", "22"="PB", "23"="RJ", "24"="SK", "25"="TN", "26"="TS", "27"="TR", "28"="UP", "29"="UK", "30"="WB")
+Evolve_AM_Eucl=function(filt_value){
+evol_AM_Eucl=matrix(0, nrow=nrow(graph_dist_AM), ncol=ncol(graph_dist_AM))
+temp=which(filt_AM_Eucl$values<filt_value)
+for (i in nrow(graph_dist_AM):max(temp)){
+  if (length(filt_AM_Eucl$cmplx[[i]])==2){
+  evol_AM_Eucl[filt_AM_Eucl$cmplx[[i]][1], filt_AM_Eucl$cmplx[[i]][2]]=1
+  evol_AM_Eucl[filt_AM_Eucl$cmplx[[i]][2], filt_AM_Eucl$cmplx[[i]][1]]=1
+  }
+  else{
+    next
+  }
+}
+g=graph_from_adjacency_matrix(evol_AM_Eucl, mode = "undirected")
+V(g)$label = state_name_index
+#png(filename = paste("newdist", filt_value, ".png"))
+plot(g, vertex.size=20, edge.width=2, main=filt_value)
+#dev.off()
+}
+```
+
+```{r}
+for (i in seq(0.05,1, by=0.05)){
+  Evolve_AM_Eucl(i)
+}
+```
+
+```{r}
+state_name_index=c("1"="AP", "2"="AR", "3"="AS", "4"="BR", "5"="CG", "6"="DL", "7"="GA", "8"="GJ", "9"="HR", "10"="HP", "11"="JK", "12"="JH", "13"="KA", "14"="KL", "15"="MP", "16"="MH", "17"="MN", "18"="ML", "19"="MZ", "20"="NL", "21"="OD", "22"="PB", "23"="RJ", "24"="SK", "25"="TN", "26"="TS", "27"="TR", "28"="UP", "29"="UK", "30"="WB")
+Evolve_AM=function(filt_value){
+evol_AM=matrix(0, nrow=nrow(graph_dist_AM), ncol=ncol(graph_dist_AM))
+temp=which(filt_AM$values<filt_value)
+for (i in nrow(graph_dist_AM):max(temp)){
+  if (length(filt_AM$cmplx[[i]])==2){
+  evol_AM[filt_AM$cmplx[[i]][1], filt_AM$cmplx[[i]][2]]=1
+  evol_AM[filt_AM$cmplx[[i]][2], filt_AM$cmplx[[i]][1]]=1
+  }
+  else{
+    next
+  }
+}
+g=graph_from_adjacency_matrix(evol_AM, mode = "undirected")
+V(g)$label = state_name_index
+#png(filename = paste("newdist", filt_value, ".png"))
+plot(g, vertex.size=20, edge.width=2, main=filt_value)
+#dev.off()
+}
+```
+
+```{r}
+for (i in seq(0.1,1.7, by=0.05)){
+  Evolve_AM(i)
+}
+```
+```{r}
+state_name_index=c("1"="AP", "2"="AR", "3"="AS", "4"="BR", "5"="CG", "6"="DL", "7"="GA", "8"="GJ", "9"="HR", "10"="HP", "11"="JK", "12"="JH", "13"="KA", "14"="KL", "15"="MP", "16"="MH", "17"="MN", "18"="ML", "19"="MZ", "20"="NL", "21"="OD", "22"="PB", "23"="RJ", "24"="SK", "25"="TN", "26"="TS", "27"="TR", "28"="UP", "29"="UK", "30"="WB")
+Evolve_GM=function(filt_value){
+evol_GM=matrix(0, nrow=nrow(graph_dist_GM), ncol=ncol(graph_dist_GM))
+temp=which(filt_GM$values<filt_value)
+for (i in nrow(graph_dist_GM):max(temp)){
+  if (length(filt_GM$cmplx[[i]])==2){
+  evol_GM[filt_GM$cmplx[[i]][1], filt_GM$cmplx[[i]][2]]=1
+  evol_GM[filt_GM$cmplx[[i]][2], filt_GM$cmplx[[i]][1]]=1
+  }
+  else{
+    next
+  }
+}
+g=graph_from_adjacency_matrix(evol_GM, mode = "undirected")
+V(g)$label = state_name_index
+#png(filename = paste("newdist", filt_value, ".png"))
+plot(g, vertex.size=20, edge.width=2, main=filt_value)
+#dev.off()
+}
+```
+
+```{r}
+for (i in seq(0.1,1.7, by=0.05)){
+  Evolve_GM(i)
+}
+```
