@@ -1,0 +1,158 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Loading the dataset and calling the required libraries.
+```{r}
+data=read.csv("../datasets/data.csv")
+library(TDA)
+library(igraph)
+library(erer)
+```
+
+Creating a graph of Indian states. The states are the vertices and there is an edge between two vertices if the corresponding states share a boundary.
+
+```{r}
+indian_state_graph = make_empty_graph(n=0, directed = FALSE)
+state_names = c("AP", "AR", "AS", "BR", "CG", "DL", "GA", "GJ", "HR", "HP", "JK", "JH", "KA", "KL", "MP", "MH", "MN", "ML", "MZ", "NL", "OD", "PB", "RJ", "SK", "TN", "TS", "TR", "UP", "UK", "WB")
+indian_state_graph = add_vertices(indian_state_graph, 30, label = state_names)
+indian_state_graph = add_edges(indian_state_graph, c(1,25, 1,13, 1,26, 1,5, 1,21, 2,3, 2,20, 3,20, 3,17, 3,19, 3,27, 3,18, 3,30, 4,30, 4,12, 4,28, 5,12, 5,21, 5,26, 5,16, 5,15, 5,28, 6,28, 6,9, 7,16, 7,13, 8,23, 8,15, 8,16, 9,10, 9,28, 9,23, 9,22, 10,11, 10,29, 10,22, 11,22, 12,30, 12,21, 12,28, 13,16, 13,26, 13,25, 13,14, 14,25, 15,28, 15,16, 15,23, 16,26, 17,20, 17,19, 19,27, 21,30, 22,23, 23,28, 24,30, 28,29))
+plot(indian_state_graph, vertex.size=17, edge.size=2)
+dist=distances(indian_state_graph)
+```
+
+Creating a distance matrix corresponding to the graph distance, as explained in the thesis document. Refer Chapter 8 of TDA_Thesis.pdf file. 
+
+```{r}
+graph_dist=matrix(0, nrow = nrow(dist), ncol = ncol(dist))
+for (i in 1:nrow(dist)){
+  for (j in 1:ncol(dist)){
+    temp=0
+    for (k in 1:ncol(data)){
+      temp=temp+((data[i,k]-data[j,k])^2)
+    }
+    graph_dist[i,j]=dist[i,j]*sqrt(temp)
+  }
+}
+```
+
+Computing the barcode for the Vietoris-Rips complex of the socioecomomic space with Euclidean distance.
+
+```{r}
+diag_Eucl=ripsDiag(X = data, maxdimension = 1, maxscale = 1, dist = "euclidean", library = "Dionysus", location = TRUE)
+plot(diag_Eucl[["diagram"]], barcode = TRUE)
+```
+
+Computing the barcode for the Vietoris-Rips complex of the socioeconomic space with the new Graph Distance that we have defined.
+
+```{r}
+diag=ripsDiag(X=graph_dist, maxdimension = 1, maxscale = 2, dist = "arbitrary", library = "Dionysus", location = TRUE, printProgress = TRUE)
+plot(diag[["diagram"]], barcode=TRUE)
+```
+
+
+```{r}
+diag_Eucl
+```
+
+
+```{r}
+diag
+```
+
+Generating the Vietoris-Rips Filtration of the socioeconomic space with the Euclidean distance.
+
+```{r}
+filt_Eucl=ripsFiltration(X = data, maxdimension = 1, maxscale = 1, dist = "euclidean", library = "Dionysus", printProgress = TRUE)
+```
+
+Order of appearance of the 1-simplices. 
+
+```{r}
+edges=vector(mode="list", length = length(filt_Eucl$cmplx))
+for (i in 1:length(filt_Eucl$cmplx)){
+  if (length(filt_Eucl$cmplx[[i]])==2){
+    edges[i]=list(filt_Eucl$cmplx[[i]])
+  }
+  else{
+    edges[i]=list(0)
+  }
+}
+
+```
+
+Writing the above information.
+```{r}
+#write.list(edges, file = "edges_order_of_appearance_4_indicators.csv")
+#write.list(list(filt_Eucl$values), file = "edges_values_4_indicators.csv")
+```
+
+Generating Vietoris-Rips complex of the socioeconomic space with the Graph distance.
+```{r}
+filt=ripsFiltration(X=graph_dist, maxdimension = 1, maxscale = 2, dist = "arbitrary", library = "Dionysus", printProgress = TRUE)
+```
+
+
+Naming the states according to their index numbers in the dataset.
+```{r}
+state_name_index=c("1"="AP", "2"="AR", "3"="AS", "4"="BR", "5"="CG", "6"="DL", "7"="GA", "8"="GJ", "9"="HR", "10"="HP", "11"="JK", "12"="JH", "13"="KA", "14"="KL", "15"="MP", "16"="MH", "17"="MN", "18"="ML", "19"="MZ", "20"="NL", "21"="OD", "22"="PB", "23"="RJ", "24"="SK", "25"="TN", "26"="TS", "27"="TR", "28"="UP", "29"="UK", "30"="WB")
+```
+
+Plotting how the states get connected by 1-simplices as the values of $\epsilon$ increases. This is according to the Euclidean distance.
+```{r}
+Evolve_Eucl=function(filt_value){
+evol_Eucl=matrix(0, nrow=nrow(graph_dist), ncol=ncol(graph_dist))
+temp=which(filt_Eucl$values<filt_value)
+for (i in nrow(graph_dist):max(temp)){
+  if (length(filt_Eucl$cmplx[[i]])==2){
+  evol_Eucl[filt_Eucl$cmplx[[i]][1], filt_Eucl$cmplx[[i]][2]]=1
+  evol_Eucl[filt_Eucl$cmplx[[i]][2], filt_Eucl$cmplx[[i]][1]]=1
+  }
+  else{
+    next
+  }
+}
+g=graph_from_adjacency_matrix(evol_Eucl, mode = "undirected")
+V(g)$label = state_name_index
+
+plot(g, vertex.size=20, edge.width=2, main=filt_value)
+
+}
+```
+
+```{r}
+for (i in seq(0.05,0.5, by=0.025)){
+  Evolve_Eucl(i)
+}
+```
+
+
+Plotting how the states get connected by 1-simplices as the values of $\epsilon$ increases. This is according to the Euclidean distance.
+```{r}
+Evolve=function(filt_value){
+evol=matrix(0, nrow=nrow(graph_dist), ncol=ncol(graph_dist))
+temp=which(filt$values<filt_value)
+for (i in nrow(graph_dist):max(temp)){
+  if (length(filt$cmplx[[i]])==2){
+  evol[filt$cmplx[[i]][1], filt$cmplx[[i]][2]]=1
+  evol[filt$cmplx[[i]][2], filt$cmplx[[i]][1]]=1
+  }
+  else{
+    next
+  }
+}
+g=graph_from_adjacency_matrix(evol, mode = "undirected")
+V(g)$label = state_name_index
+
+plot(g, vertex.size=20, edge.width=2, main=filt_value)
+
+}
+```
+
+```{r}
+for (i in seq(0.1,0.8, by=0.05)){
+  Evolve(i)
+}
+```
+
